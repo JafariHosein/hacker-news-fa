@@ -40,10 +40,9 @@ scheduled with a Cron Trigger every 15 minutes.
 - جلوگیری از ارسال تکراری با KV
 - اجرای خودکار هر ۱۵ دقیقه، بدون دخالت دستی
 
-## Live deployment
+## Live channel
 
-- **Telegram channel:** [@AutoHackerNewsFarsi](https://t.me/AutoHackerNewsFarsi)
-- **Worker health check:** [hacker-news-fa.hosseindev1552.workers.dev/health](https://hacker-news-fa.hosseindev1552.workers.dev/health)
+- **Telegram:** [@AutoHackerNewsFarsi](https://t.me/AutoHackerNewsFarsi)
 
 ## Features
 
@@ -124,7 +123,8 @@ after deployment are eligible.
 
 The channel avatar is [`assets/logo-b.png`](assets/logo-b.png); the editable
 vector source is [`assets/logo-b.svg`](assets/logo-b.svg). Two alternative
-concepts are kept in `assets/logo-a.*` and `assets/logo-c.*`.
+concepts are kept in [`assets/logo-a.svg`](assets/logo-a.svg) and
+[`assets/logo-c.svg`](assets/logo-c.svg).
 
 The Worker appends the public channel handle from `TELEGRAM_CHANNEL_HANDLE` to
 every post, so readers can find and share the channel.
@@ -232,9 +232,10 @@ way to verify Gemini and article extraction.
 
 When you are ready for a real post, omit `dry=1`.
 
-> The first live run only records the init timestamp. It will not post old
-> stories. New stories become eligible as they are submitted and cross
-> `MIN_SCORE`.
+> The first live run records `bot_init_timestamp` and ignores everything
+> submitted before it, so deploying the bot will not dump old links into the
+> channel. A story submitted after that moment can still be posted if it is
+> already on the front page and above `MIN_SCORE`.
 
 ## Local development
 
@@ -471,9 +472,9 @@ pages. The top comments are usually enough for a useful summary.
 
 ### `wrangler deploy` complains about the KV namespace id
 
-The checked-in `wrangler.toml` points to the production namespace. For a fresh
-Cloudflare account, run `npx wrangler kv namespace create HN_KV` and replace the
-`id` under `[[kv_namespaces]]` with the id returned by that command.
+For a fresh Cloudflare account, run `npx wrangler kv namespace create HN_KV`
+and replace the `id` under `[[kv_namespaces]]` with the id returned by that
+command.
 
 ### Local and production data differ
 
@@ -503,5 +504,5 @@ production.
 
 ## License
 
-No license file is included. Add one before distributing or publishing the
-project.
+No license file is included. The source is published for viewing only; no
+permission is granted for redistribution or reuse.
