@@ -4,6 +4,23 @@
   "private": true,
   "type": "module",
   "description": "Cloudflare Worker that turns high-value Hacker News stories into natural Persian posts for Telegram, powered by Gemini.",
+  "license": "MIT",
+  "author": "Hosein Jafari",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JafariHosein/hacker-news-fa.git"
+  },
+  "homepage": "https://github.com/JafariHosein/hacker-news-fa#readme",
+  "bugs": {
+    "url": "https://github.com/JafariHosein/hacker-news-fa/issues"
+  },
+  "keywords": [
+    "hacker-news",
+    "telegram",
+    "persian",
+    "cloudflare-workers",
+    "gemini"
+  ],
   "engines": {
     "node": ">=22.12.0"
   },

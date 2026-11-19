@@ -40,8 +40,9 @@ TELEGRAM_CHANNEL_HANDLE = "@AutoHackerNewsFarsi"
 
 # Create the namespace with:
 #   npx wrangler kv namespace create HN_KV
-# and paste the returned id below. Local development (wrangler dev) uses a
-# local simulated KV namespace and does not need a real id.
+# and paste the returned id below. The id below belongs to the live deployment;
+# replace it with your own when deploying a fork. Local development (wrangler
+# dev) uses a local simulated KV namespace and does not need a real id.
 [[kv_namespaces]]
 binding = "HN_KV"
 id = "1ab548ef9f054f4c95f82a560187acbc"

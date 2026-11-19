@@ -16,6 +16,8 @@
   <a href="#configuration">Configuration</a>
   ·
   <a href="#troubleshooting">Troubleshooting</a>
+  ·
+  <a href="LICENSE">License</a>
 </p>
 
 ---
@@ -40,15 +42,16 @@ scheduled with a Cron Trigger every 15 minutes.
 - جلوگیری از ارسال تکراری با KV
 - اجرای خودکار هر ۱۵ دقیقه، بدون دخالت دستی
 
-## Live channel
+## Links
 
-- **Telegram:** [@AutoHackerNewsFarsi](https://t.me/AutoHackerNewsFarsi)
+- **Telegram channel:** [@AutoHackerNewsFarsi](https://t.me/AutoHackerNewsFarsi)
+- **Source code:** [github.com/JafariHosein/hacker-news-fa](https://github.com/JafariHosein/hacker-news-fa)
 
 ## Features
 
 - **Hacker News ingestion** from the official Firebase API.
-- **Score + recency filtering** with `MIN_SCORE` and a deployment timestamp, so
-  the channel never gets a flood of old news.
+- **Score + recency filtering** with `MIN_SCORE` and an init timestamp, so the
+  channel never gets a flood of old news.
 - **Deduplication** with 30-day TTL keys in KV; seen IDs are filtered before
   item fetches so quiet periods do not waste the subrequest budget.
 - **Article extraction** with a small, dependency-free HTML-to-text pipeline.
@@ -77,28 +80,28 @@ GET /trigger ─┴──> runPipeline()
                        ├─ 1. GET /v0/topstories.json
                        ├─ 2. Skip IDs already marked seen (KV reads, no
                        │        subrequest cost), then GET /v0/item/<id>.json
-                       │        for the first 30 stories
+                       │        for the unseen IDs among the first 30 stories
                        ├─ 3. Filter: type=story, score >= MIN_SCORE,
                        │        submitted after init timestamp
                        ├─ 4. Build context: article text
-                       │        └─ fallback → HN self text + top 5 comments
+                       │        └─ fallback → HN self text + top comments (MAX_COMMENTS)
                        ├─ 5. Gemini generateContent → JSON
                        │        { title_fa, summary_fa, hashtags }
                        ├─ 6. Telegram sendMessage (HTML)
                        └─ 7. KV seen:<id> = 1 (TTL 30 days)
 ```
 
-The first time the Worker runs, it stores `bot_init_timestamp` in KV. Any story
-submitted before that moment is ignored. This is intentional: deploying the bot
-will not dump a week of old links into your channel. Only stories published
-after deployment are eligible.
+The first run (cron, manual trigger, or dry run) stores `bot_init_timestamp` in
+KV. Any story submitted before that moment is ignored. This is intentional:
+deploying the bot will not dump a week of old links into your channel. Only
+stories submitted after the init timestamp are eligible.
 
 ## Project layout
 
 ```text
 .
 ├── src/
-│   ├── index.ts        # Worker entry point: /, /trigger, scheduled()
+│   ├── index.ts        # Worker entry point: /, /health, /trigger, scheduled()
 │   ├── pipeline.ts     # Orchestration, filtering, dedup, subrequest budget
 │   ├── hn.ts           # Hacker News Firebase API client
 │   ├── scraper.ts      # Article fetch + lightweight HTML-to-text
@@ -110,7 +113,7 @@ after deployment are eligible.
 │   ├── helpers.test.ts # Unit tests for pure helpers
 │   └── pipeline.test.ts # Mocked end-to-end pipeline tests (dedup, fallback, dry run)
 ├── assets/             # Channel logo sources and rendered PNGs
-├── PROMPT.md           # Original product requirements
+├── LICENSE             # MIT license
 ├── wrangler.toml       # KV binding, cron trigger, non-secret vars
 ├── .dev.vars.example   # Template for local secrets
 ├── package.json
@@ -122,9 +125,10 @@ after deployment are eligible.
 ## Branding
 
 The channel avatar is [`assets/logo-b.png`](assets/logo-b.png); the editable
-vector source is [`assets/logo-b.svg`](assets/logo-b.svg). Two alternative
-concepts are kept in [`assets/logo-a.svg`](assets/logo-a.svg) and
-[`assets/logo-c.svg`](assets/logo-c.svg).
+vector source is [`assets/logo-b.svg`](assets/logo-b.svg). The two alternative
+concepts are kept as SVG and PNG under `assets/logo-a.*` and `assets/logo-c.*`,
+and [`assets/logo-options.png`](assets/logo-options.png) shows all three side by
+side.
 
 The Worker appends the public channel handle from `TELEGRAM_CHANNEL_HANDLE` to
 every post, so readers can find and share the channel.
@@ -161,11 +165,12 @@ npm install
 ### 3. Create a Gemini API key
 
 Go to <https://aistudio.google.com/app/apikey>, create a key, and copy it.
-The default model is `gemini-3.5-flash-lite`, a current, stable model that is
-free of charge on the Gemini API free tier. You can change it later with the
-`GEMINI_MODEL` variable in `wrangler.toml`. Note that the old
-`gemini-2.5-flash` used in many examples is deprecated and stops accepting new
-API traffic on December 1, 2026, so do not use it for a fresh deployment.
+The default model is `gemini-3.5-flash-lite`, which is available on the Gemini
+API free tier at the time of writing. You can change it later with the
+`GEMINI_MODEL` variable in `wrangler.toml`. Model IDs and free-tier quotas
+change over time; check Google's
+[model list](https://ai.google.dev/gemini-api/docs/models) before switching to
+an older model.
 
 ### 4. Create the KV namespace
 
@@ -227,15 +232,17 @@ curl -sS \
 ```
 
 `dry=1` runs the whole pipeline and returns the rendered Telegram HTML, but
-does **not** send a message and does not write dedup keys. This is the safest
-way to verify Gemini and article extraction.
+does **not** send a message and does not write `seen:` keys. The only possible
+write is initializing `bot_init_timestamp` if the Worker has never run before,
+so a dry run can start the eligibility clock. This is the safest way to verify
+Gemini and article extraction.
 
 When you are ready for a real post, omit `dry=1`.
 
-> The first live run records `bot_init_timestamp` and ignores everything
-> submitted before it, so deploying the bot will not dump old links into the
-> channel. A story submitted after that moment can still be posted if it is
-> already on the front page and above `MIN_SCORE`.
+> The first run records `bot_init_timestamp` and ignores everything submitted
+> before it, so deploying the bot will not dump old links into the channel. A
+> story submitted after that moment can still be posted if it is already on the
+> front page and above `MIN_SCORE`.
 
 ## Local development
 
@@ -255,7 +262,7 @@ curl -sS \
 
 Notes:
 
-- `wrangler dev` uses a local KV simulation stored under `.wrangler/state`.
+- `wrangler dev` uses a local KV simulation stored under `.wrangler/`.
   Local data is separate from production KV.
 - Cron Triggers do not fire in plain `wrangler dev`; use `/trigger`.
 - To test the full Telegram path locally, remove `dry=1`. Messages will go to
@@ -295,8 +302,8 @@ npx wrangler deployments list
 
 | Parameter | Description |
 | --------- | ----------- |
-| `dry=1`   | Do not send to Telegram or write `seen:` keys; return `preview` HTML. |
-| `limit=N` | Override `MAX_POSTS_PER_RUN` for this run (1-5). |
+| `dry=1`   | Do not send to Telegram or write `seen:` keys; return `preview` HTML. May initialize `bot_init_timestamp` on the first run. |
+| `limit=N` | Override `MAX_POSTS_PER_RUN` for this run (1-5; values above 5 are capped). |
 
 Prefer the `Authorization` header in production. Query-string secrets can end
 up in access logs and browser history.
@@ -340,8 +347,8 @@ Non-secret values live in `[vars]` in `wrangler.toml`. Secrets are uploaded with
 | `MAX_POSTS_PER_RUN` | var | `2` | Maximum posts per cron run (1-10). |
 | `MAX_STORIES_TO_SCAN` | var | `30` | Top stories inspected per run (1-30). IDs already posted are skipped before item fetches. |
 | `MAX_COMMENTS` | var | `5` | Top-level comments used as fallback context (0-10). |
-| `TELEGRAM_CHANNEL_HANDLE` | var | `@AutoHackerNewsFarsi` | Public channel handle appended to every post. |
-| `GEMINI_THINKING_BUDGET` | var | `0` | Legacy thinking-token budget for `gemini-2.5-flash*` models. `0` disables thinking there; ignored for Gemini 3+ models (3.5 Flash-Lite defaults to minimal thinking). |
+| `TELEGRAM_CHANNEL_HANDLE` | var | `@AutoHackerNewsFarsi` | Public channel handle appended to every post (4-32 letters, digits, or underscores). Set it to an empty string to hide the footer. |
+| `GEMINI_THINKING_BUDGET` | var | `0` | Legacy thinking-token budget for `gemini-2.5-flash*` models. `0` disables thinking there; ignored by other models. |
 | `TELEGRAM_BOT_TOKEN` | secret | — | Token from @BotFather. |
 | `TELEGRAM_CHANNEL_ID` | secret | — | `@channel_name` or numeric `-100...` id. |
 | `GEMINI_API_KEY` | secret | — | Google AI Studio key. |
@@ -364,10 +371,11 @@ sanitized, de-duplicated, and capped.
 
 ### Subrequest budget
 
-The free Workers plan allows 50 subrequests per invocation. This project uses a
-soft cap of **45** and counts every outbound `fetch` (HN API, article, Gemini,
-Telegram), including each redirect hop. Seen IDs are checked in KV before item
-fetches, so a quiet top list does not consume the whole budget:
+The free Workers plan allows 50 subrequests per invocation at the time of
+writing. This project uses a soft cap of **45** and counts every outbound
+`fetch` (HN API, article, Gemini, Telegram), including each redirect hop. Seen
+IDs are checked in KV before item fetches, so a quiet top list does not consume
+the whole budget:
 
 ```text
 1 (topstories) + up to 30 (items not already seen)
@@ -378,12 +386,16 @@ Comment slots shrink automatically as the budget gets tight, so a full first
 run still stays at or below 45. Article redirects are followed manually (up to
 3 hops) and every hop is charged to the same budget, so a redirect chain cannot
 silently push the invocation past Cloudflare's hard limit. The remaining slots
-cover the optional Telegram 429 retry. If you raise `MAX_STORIES_TO_SCAN`,
-`MAX_COMMENTS`, or `MAX_POSTS_PER_RUN`, the guard stops gracefully and reports
-`"stoppedReason": "subrequest_budget"` instead of failing at Cloudflare's hard
-limit.
+also cover the optional Gemini and Telegram retries. If a larger scan, more
+comments, or a redirect chain makes the budget tight, the guard stops gracefully
+and reports `"stoppedReason": "subrequest_budget"` instead of failing at
+Cloudflare's hard limit.
 
 ### Free-tier notes
+
+Limits below are the free-plan limits at the time of writing; check
+[Cloudflare's pricing page](https://developers.cloudflare.com/workers/platform/pricing/)
+for the current values.
 
 - **CPU:** Workers free tier gives 10 ms CPU per invocation. HTML extraction is a
   single-pass linear scanner capped at 200 KB of HTML, so truncated or
@@ -422,6 +434,16 @@ limit.
   `disable_web_page_preview: true`, Persian title in bold, source link (omitted
   for text-only posts), HN discussion link, hashtags, and a clickable channel
   handle footer (`TELEGRAM_CHANNEL_HANDLE`).
+- **AI output:** summaries are model-generated and can contain mistakes. Every
+  post links to the HN discussion and, when the story has one, the original
+  article, so readers can verify the details.
+- **Message limit:** long summaries are trimmed so the final Telegram HTML stays
+  under Telegram's 4,096-character limit.
+- **Run time:** once a run passes 45 seconds, the pipeline starts no new stories
+  and reports `"stoppedReason": "time_limit"`.
+- **Stop reasons:** the response reports why a run ended: `post_limit`,
+  `subrequest_budget`, `time_limit`, `too_many_errors`, or
+  `candidates_exhausted`.
 - **Errors:** each story is processed inside `try/catch`. Other stories still
   run, and the JSON response plus logs contain the failure reason. After three
   consecutive systemic failures (for example an invalid Gemini key) the run
@@ -451,8 +473,10 @@ again.
 
 ### No posts after deploying
 
-This is expected on the first run: the bot only posts stories submitted **after**
-`bot_init_timestamp`. Also check:
+A quiet first run is normal: only stories submitted **after**
+`bot_init_timestamp` are eligible. A fresh story that is already on the front
+page above `MIN_SCORE` can still be posted on the first run. If the channel
+stays quiet, check:
 
 - `MIN_SCORE` may be too high for the current front page.
 - The story may already be marked as seen.
@@ -472,9 +496,9 @@ pages. The top comments are usually enough for a useful summary.
 
 ### `wrangler deploy` complains about the KV namespace id
 
-For a fresh Cloudflare account, run `npx wrangler kv namespace create HN_KV`
-and replace the `id` under `[[kv_namespaces]]` with the id returned by that
-command.
+The `id` committed here belongs to this project's live deployment. For a fork
+or a fresh Cloudflare account, run `npx wrangler kv namespace create HN_KV` and
+replace the `id` under `[[kv_namespaces]]` with the id returned by that command.
 
 ### Local and production data differ
 
@@ -495,6 +519,12 @@ production.
   markup.
 - Rotate the Telegram token and Gemini key immediately if either leaks.
 
+## Contributing
+
+Issues and pull requests are welcome. Open an issue before a large change so
+the approach can be agreed on first. Before opening a pull request, run
+`npm test` and `npm run typecheck`; both are expected to pass.
+
 ## Acknowledgements
 
 - [Hacker News Firebase API](https://github.com/HackerNews/API)
@@ -504,5 +534,7 @@ production.
 
 ## License
 
-No license file is included. The source is published for viewing only; no
-permission is granted for redistribution or reuse.
+Released under the [MIT License](LICENSE). © 2026 Hosein Jafari.
+
+Hacker News is operated by Y Combinator. This bot is an independent project and
+is not affiliated with or endorsed by Y Combinator.
