@@ -126,12 +126,14 @@ stories submitted after the init timestamp are eligible.
 
 The channel avatar is [`assets/logo-b.png`](assets/logo-b.png); the editable
 vector source is [`assets/logo-b.svg`](assets/logo-b.svg). The two alternative
-concepts are kept as SVG and PNG under `assets/logo-a.*` and `assets/logo-c.*`,
-and [`assets/logo-options.png`](assets/logo-options.png) shows all three side by
+concepts are kept in [`assets/logo-a.svg`](assets/logo-a.svg) and
+[`assets/logo-c.svg`](assets/logo-c.svg), with PNG renders alongside them.
+[`assets/logo-options.png`](assets/logo-options.png) shows all three side by
 side.
 
 The Worker appends the public channel handle from `TELEGRAM_CHANNEL_HANDLE` to
-every post, so readers can find and share the channel.
+every post when the value is a valid public handle, so readers can find and
+share the channel.
 
 ## Prerequisites
 
@@ -375,7 +377,8 @@ The free Workers plan allows 50 subrequests per invocation at the time of
 writing. This project uses a soft cap of **45** and counts every outbound
 `fetch` (HN API, article, Gemini, Telegram), including each redirect hop. Seen
 IDs are checked in KV before item fetches, so a quiet top list does not consume
-the whole budget:
+the whole budget. With the default `MAX_POSTS_PER_RUN=2` and `MAX_COMMENTS=5`,
+the typical budget looks like:
 
 ```text
 1 (topstories) + up to 30 (items not already seen)
@@ -435,10 +438,11 @@ for the current values.
   for text-only posts), HN discussion link, hashtags, and a clickable channel
   handle footer (`TELEGRAM_CHANNEL_HANDLE`).
 - **AI output:** summaries are model-generated and can contain mistakes. Every
-  post links to the HN discussion and, when the story has one, the original
-  article, so readers can verify the details.
-- **Message limit:** long summaries are trimmed so the final Telegram HTML stays
-  under Telegram's 4,096-character limit.
+  post links to the HN discussion and includes the original article when a valid
+  source URL exists, so readers can verify the details.
+- **Message limit:** long summaries are trimmed to keep the final Telegram HTML
+  under Telegram's 4,096-character limit; if a message still cannot fit, that
+  story fails with an explicit error.
 - **Run time:** once a run passes 45 seconds, the pipeline starts no new stories
   and reports `"stoppedReason": "time_limit"`.
 - **Stop reasons:** the response reports why a run ended: `post_limit`,
@@ -502,9 +506,9 @@ replace the `id` under `[[kv_namespaces]]` with the id returned by that command.
 
 ### Local and production data differ
 
-`wrangler dev` uses local KV state. Production KV is only created/used after
-deployment. Use `--remote` with `wrangler kv key ...` commands when inspecting
-production.
+`wrangler dev` uses local KV state. The deployed Worker uses the remote KV
+namespace configured in `wrangler.toml`. Use `--remote` with `wrangler kv key
+...` commands when inspecting production.
 
 ## Security notes
 
