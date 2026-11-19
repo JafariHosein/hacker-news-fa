@@ -82,7 +82,7 @@ GET /trigger ─┴──> runPipeline()
                        │        subrequest cost), then GET /v0/item/<id>.json
                        │        for the unseen IDs among the first 30 stories
                        ├─ 3. Filter: type=story, score >= MIN_SCORE,
-                       │        submitted after init timestamp
+                       │        submitted at or after init timestamp
                        ├─ 4. Build context: article text
                        │        └─ fallback → HN self text + top comments (MAX_COMMENTS)
                        ├─ 5. Gemini generateContent → JSON
@@ -94,7 +94,7 @@ GET /trigger ─┴──> runPipeline()
 The first run (cron, manual trigger, or dry run) stores `bot_init_timestamp` in
 KV. Any story submitted before that moment is ignored. This is intentional:
 deploying the bot will not dump a week of old links into your channel. Only
-stories submitted after the init timestamp are eligible.
+stories submitted at or after the init timestamp are eligible.
 
 ## Project layout
 
@@ -243,8 +243,8 @@ When you are ready for a real post, omit `dry=1`.
 
 > The first run records `bot_init_timestamp` and ignores everything submitted
 > before it, so deploying the bot will not dump old links into the channel. A
-> story submitted after that moment can still be posted if it is already on the
-> front page and above `MIN_SCORE`.
+> story submitted at or after that moment can still be posted if it is already
+> on the front page and above `MIN_SCORE`.
 
 ## Local development
 
@@ -477,7 +477,7 @@ again.
 
 ### No posts after deploying
 
-A quiet first run is normal: only stories submitted **after**
+A quiet first run is normal: only stories submitted **at or after**
 `bot_init_timestamp` are eligible. A fresh story that is already on the front
 page above `MIN_SCORE` can still be posted on the first run. If the channel
 stays quiet, check:
