@@ -1,0 +1,47 @@
+# Cloudflare Worker configuration.
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "hacker-news-fa"
+main = "src/index.ts"
+compatibility_date = "2026-11-19"
+workers_dev = true
+preview_urls = false
+
+# Every 15 minutes, on the hour. Cron expressions are always in UTC.
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Real-time logs and traces in the Cloudflare dashboard. Traces are sampled so
+# a 15-minute cron does not create a large, billable observability volume.
+[observability]
+enabled = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.1
+
+# Warn locally (and generate better Env types) if a secret is forgotten.
+[secrets]
+required = [
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_CHANNEL_ID",
+  "GEMINI_API_KEY",
+  "TRIGGER_SECRET",
+]
+
+# Non-secret configuration. Everything here can be overridden per environment.
+[vars]
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+MIN_SCORE = "100"
+MAX_POSTS_PER_RUN = "2"
+MAX_STORIES_TO_SCAN = "30"
+MAX_COMMENTS = "5"
+TELEGRAM_CHANNEL_HANDLE = "@AutoHackerNewsFarsi"
+
+# Create the namespace with:
+#   npx wrangler kv namespace create HN_KV
+# and paste the returned id below. Local development (wrangler dev) uses a
+# local simulated KV namespace and does not need a real id.
+[[kv_namespaces]]
+binding = "HN_KV"
+id = "1ab548ef9f054f4c95f82a560187acbc"

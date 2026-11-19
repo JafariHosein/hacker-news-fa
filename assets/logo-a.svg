@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#FF6600"/>
+  <g fill="#FFFFFF">
+    <!-- H -->
+    <rect x="196" y="320" width="112" height="384"/>
+    <rect x="346" y="320" width="112" height="384"/>
+    <rect x="196" y="456" width="262" height="112"/>
+    <!-- N -->
+    <rect x="526" y="320" width="112" height="384"/>
+    <rect x="716" y="320" width="112" height="384"/>
+    <polygon points="526,320 638,320 828,704 716,704"/>
+    <!-- terminal cursor -->
+    <rect x="430" y="790" width="164" height="28" rx="14"/>
+  </g>
+</svg>
